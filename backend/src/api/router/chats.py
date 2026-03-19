@@ -92,10 +92,18 @@ async def chat_with_assistant(
             new_messages.append({"role": "assistant", "content": full_response})
             chat_record.messages = new_messages
 
-            # Auto-title from first user message
+            # Auto-title: use LLM to generate a concise summary title
             if chat_record.title == "New Consultation":
-                words = request.message.split()[:6]
-                chat_record.title = " ".join(words) + ("…" if len(request.message.split()) > 6 else "")
+                from src.api.agent import llm
+                try:
+                    title_resp = llm.invoke([
+                        ("system", "Generate a concise 3-6 word title summarizing this medical question. Output ONLY the title, nothing else."),
+                        ("user", request.message),
+                    ])
+                    chat_record.title = title_resp.content.strip().strip('"').strip("'")[:60]
+                except Exception:
+                    words = request.message.split()[:6]
+                    chat_record.title = " ".join(words) + ("…" if len(request.message.split()) > 6 else "")
 
             db.add(chat_record)
             db.commit()
