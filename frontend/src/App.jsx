@@ -624,9 +624,11 @@ export default function App() {
                 <Icon name="send" fill size="text-[20px]" />
               </button>
             </div>
-            <div className="text-center mt-3">
-              <span className="text-on-surface-variant/70 font-label text-[10px] font-medium tracking-wide">NEXUS AI can make mistakes. Always verify critical clinical information.</span>
-            </div>
+              <span className="text-on-surface-variant/70 font-label text-[10px] font-medium tracking-wide flex items-center justify-center gap-1 flex-wrap">
+                <span>NEXUS AI can make mistakes. Always verify critical clinical information.</span>
+                <span className="opacity-50 mx-1">•</span>
+                <span>&copy; {new Date().getFullYear()} Theophilus Olayiwola</span>
+              </span>
           </div>
         </div>
       </main>
