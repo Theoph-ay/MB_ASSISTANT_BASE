@@ -26,6 +26,10 @@ class ChatCreate(BaseModel):
     title: Optional[str] = "New Consultation"
     user_id: Optional[UUID] = None
 
+class ChatRequest(BaseModel):
+    message: str
+    thread_id: uuid.UUID
+
 class ChatResponse(BaseModel):
     answer: str
     thread_id: str

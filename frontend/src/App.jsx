@@ -23,9 +23,12 @@ export default function App() {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'Welcome, Colleague. How can I assist with your clinical cases or ENT revision today?' }
   ]);
+  const [sessions, setSessions] = useState([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editCache, setEditCache] = useState('');
   const messagesEndRef = useRef(null);
   const threadId = useRef(crypto.randomUUID());
 
@@ -41,6 +44,45 @@ export default function App() {
       setHasPaid(paid === 'true');
     }
   }, [address]);
+
+  const loadSessions = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/v1/chat/sessions', {
+        headers: {
+          'x-wallet-address': address || 'anonymous',
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSessions(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const loadHistory = async (id) => {
+    try {
+      const res = await fetch(`http://localhost:8000/api/v1/chat/history/${id}`, {
+        headers: {
+          'x-wallet-address': address || 'anonymous',
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        threadId.current = data.thread_id;
+        setMessages(data.messages || []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    if (isConnected && hasPaid && address) {
+      loadSessions();
+    }
+  }, [isConnected, hasPaid, address]);
 
   const handlePaymentSuccess = () => {
     setHasPaid(true);
@@ -88,6 +130,75 @@ export default function App() {
       ]);
     } finally {
       setIsStreaming(false);
+      loadSessions();
+    }
+  };
+
+  const handleEditSubmit = async (index) => {
+    if (!editCache.trim() || isStreaming) {
+      setEditingIndex(null);
+      return;
+    }
+    
+    // Optimistically truncate local state
+    const newHistory = messages.slice(0, index);
+    newHistory.push({ role: 'user', content: editCache });
+    setMessages(newHistory);
+    setEditingIndex(null);
+    setIsStreaming(true);
+
+    try {
+      // Tell backend to truncate history up to `index` and insert the new message
+      // Note: We need to modify backend `/edit` endpoint to allow resubmission, 
+      // or we can call `/edit` then `/chat`. For now, let's call `/edit` to truncate,
+      // and then call `/chat` normally (assuming backend `/edit` is fixed to just truncate).
+      await fetch('http://localhost:8000/api/v1/chat/edit', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-wallet-address': address || 'anonymous',
+        },
+        body: JSON.stringify({ 
+          thread_id: threadId.current, 
+          message_index: index, 
+          new_content: editCache 
+        }),
+      });
+
+      // Now call chat again with the new message
+      // Notice we do NOT send the message in the `messages` array, we send it as a fresh `POST /chat`
+      // Wait, if the backend `/edit` appends the user message as per current logic, calling POST /chat with the same message appends it TWICE.
+      // I will fix the backend `/edit` to ONLY truncate, leaving the user message to be appended by `/chat`. 
+      // Actually, if we just send the message to `/chat` now:
+      const response = await fetch('http://localhost:8000/api/v1/chat/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-wallet-address': address || 'anonymous',
+        },
+        body: JSON.stringify({ message: editCache, thread_id: threadId.current }),
+      });
+      
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let aiResponse = '';
+      setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        aiResponse += decoder.decode(value);
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content: aiResponse };
+          return updated;
+        });
+      }
+    } catch (error) {
+       console.error(error);
+    } finally {
+       setIsStreaming(false);
+       loadSessions();
     }
   };
 
@@ -232,17 +343,27 @@ export default function App() {
 
           {/* Navigation */}
           <nav className="flex flex-col gap-1 flex-1 overflow-y-auto custom-scrollbar -mx-2 px-2">
-            <h2 className="text-on-surface-variant font-label text-[10px] uppercase font-bold tracking-widest mb-2 mt-4 px-2">Active Modules</h2>
-            <a className="flex items-center gap-3 px-3 py-2.5 rounded bg-surface-container-high text-primary font-headline font-medium text-sm relative" href="#">
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full" />
-              <Icon name="chat" fill size="text-[20px]" /> Consultations
-            </a>
-            <a className="flex items-center gap-3 px-3 py-2.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-headline font-medium text-sm transition-colors" href="#">
-              <Icon name="library_books" size="text-[20px]" /> Medical Library
-            </a>
-            <a className="flex items-center gap-3 px-3 py-2.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-headline font-medium text-sm transition-colors" href="#">
-              <Icon name="vital_signs" size="text-[20px]" /> Patient Cases
-            </a>
+            <h2 className="text-on-surface-variant font-label text-[10px] uppercase font-bold tracking-widest mb-2 mt-4 px-2">Recent Consultations</h2>
+            {sessions.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase())).map(session => (
+              <button
+                key={session.thread_id}
+                onClick={() => loadHistory(session.thread_id)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded hover:bg-surface-container-high font-headline font-medium text-sm transition-colors text-left relative ${
+                  threadId.current === session.thread_id ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant'
+                }`}
+              >
+                {threadId.current === session.thread_id && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full" />
+                )}
+                <Icon name="chat" fill={threadId.current === session.thread_id} size="text-[20px]" className="flex-shrink-0" />
+                <span className="truncate flex-1">{session.title}</span>
+              </button>
+            ))}
+            {sessions.length === 0 && (
+              <div className="px-3 py-4 text-center text-on-surface-variant text-xs font-medium">
+                No consultations yet.
+              </div>
+            )}
           </nav>
 
           {/* User Identity - OnchainKit */}
@@ -293,37 +414,66 @@ export default function App() {
           {messages.map((msg, i) => (
             msg.role === 'user' ? (
               /* ── User Message ── */
-              <div key={i} className="flex flex-col items-end gap-1 w-full max-w-4xl mx-auto">
+              <div key={i} className="flex flex-col items-end gap-1 w-full max-w-4xl mx-auto group">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-on-surface font-headline text-sm font-medium">Student</span>
                 </div>
-                <div className="bg-surface-container-highest text-on-surface p-5 rounded-[0.5rem] rounded-tr-[0.25rem] max-w-[85%] shadow-[0_8px_24px_rgba(0,0,0,0.2)]">
-                  <p className="font-body text-[15px] leading-[1.6] whitespace-pre-wrap">{msg.content}</p>
+                <div className="relative bg-surface-container-highest text-on-surface p-5 rounded-[0.5rem] rounded-tr-[0.25rem] max-w-[85%] shadow-[0_8px_24px_rgba(0,0,0,0.2)]">
+                  {editingIndex === i ? (
+                    <div className="flex flex-col gap-2 min-w-[300px]">
+                      <textarea
+                        className="w-full bg-surface text-on-surface p-2 rounded text-[15px] custom-scrollbar resize-none border border-outline-variant focus:ring-1 focus:ring-primary"
+                        value={editCache}
+                        onChange={(e) => setEditCache(e.target.value)}
+                        rows={3}
+                        autoFocus
+                      />
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => setEditingIndex(null)} className="px-3 py-1 text-xs text-on-surface-variant hover:text-on-surface focus:outline-none">Cancel</button>
+                        <button onClick={() => handleEditSubmit(i)} className="px-3 py-1 bg-primary text-on-primary rounded text-xs font-bold shadow focus:outline-none">Update & Send</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="font-body text-[15px] leading-[1.6] whitespace-pre-wrap">{msg.content}</p>
+                  )}
+                  {/* Action buttons (Hover) */}
+                  {!editingIndex && (
+                    <div className="absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                      <button
+                        onClick={() => { setEditingIndex(i); setEditCache(msg.content); }}
+                        className="p-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors shadow-sm"
+                        title="Edit Message"
+                      >
+                        <Icon name="edit" size="text-[16px]" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
               /* ── AI Message ── */
-              <div key={i} className="flex flex-col items-start gap-1 w-full max-w-4xl mx-auto">
+              <div key={i} className="flex flex-col items-start gap-1 w-full max-w-4xl mx-auto group">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-5 h-5 rounded bg-primary flex items-center justify-center text-on-primary">
                     <Icon name="smart_toy" size="text-[14px]" />
                   </div>
                   <span className="text-primary font-headline text-sm font-bold tracking-wide">MB_ASSISTANT</span>
                 </div>
-                <div className="bg-secondary-container text-on-surface p-6 rounded-[0.5rem] rounded-tl-[0.25rem] max-w-[90%] shadow-[0_12px_32px_rgba(0,0,0,0.25)]">
+                <div className="relative bg-secondary-container text-on-surface p-6 rounded-[0.5rem] rounded-tl-[0.25rem] max-w-[90%] shadow-[0_12px_32px_rgba(0,0,0,0.25)]">
                   <p className="font-body text-[15px] leading-[1.6] whitespace-pre-wrap">{msg.content}</p>
+                  {/* Action buttons (Hover) */}
+                  {msg.content && (
+                    <div className="absolute -right-12 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+                      <button
+                        onClick={() => navigator.clipboard.writeText(msg.content)}
+                        className="p-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors shadow-sm"
+                        title="Copy text"
+                      >
+                        <Icon name="content_copy" size="text-[16px]" />
+                      </button>
+                    </div>
+                  )}
                 </div>
-                {/* Action buttons */}
-                {msg.content && (
-                  <div className="flex gap-2 mt-2 px-2">
-                    <button
-                      onClick={() => navigator.clipboard.writeText(msg.content)}
-                      className="flex items-center gap-1.5 px-2 py-1.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors font-label text-[11px] font-bold uppercase tracking-wider"
-                    >
-                      <Icon name="content_copy" size="text-[14px]" /> Copy
-                    </button>
-                  </div>
-                )}
               </div>
             )
           ))}

@@ -32,6 +32,10 @@ app.add_middleware(
 
 @app.middleware("http")
 async def verify_wallet_address(request: Request, call_next):
+    # Pass Preflight OPTIONS requests for CORS
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
     # Skip middleware for docs, openapi, and root
     if request.url.path.startswith("/docs") or request.url.path.startswith("/openapi.json") or request.url.path == "/":
         return await call_next(request)
@@ -41,6 +45,7 @@ async def verify_wallet_address(request: Request, call_next):
         wallet_address = request.headers.get("x-wallet-address")
         if not wallet_address:
             return JSONResponse(status_code=401, content={"detail": "Clinical Access Required: Missing Wallet Address"})
+        request.state.wallet_address = wallet_address
     
     response = await call_next(request)
     return response
