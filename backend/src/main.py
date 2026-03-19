@@ -24,7 +24,10 @@ app = FastAPI(
 # Logic: Open the gates for the Frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development, allow everything
+    allow_origins=[
+        "http://localhost:5173",
+        "https://mb-assistant-base.vercel.app"
+    ],  # For development, allow everything
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
