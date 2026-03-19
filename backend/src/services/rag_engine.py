@@ -1,6 +1,6 @@
 import os
 from langchain_pinecone import PineconeVectorStore
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from src.core.config import settings
 
 # Logic: We define a function to initialize embeddings to keep it clean
