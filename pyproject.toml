@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mb-assistant"
+version = "0.1.0"
+description = "This is an AI project to create a study assistant for medical board exams for myself and my classmates"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "alembic>=1.18.4",
+    "authlib>=1.6.9",
+    "ddgs>=9.11.2",
+    "duckduckgo-search>=8.1.1",
+    "fastapi[standard]>=0.134.0",
+    "groq>=0.37.1",
+    "httpx>=0.28.1",
+    "langchain>=1.2.10",
+    "langchain-classic>=1.0.1",
+    "langchain-community>=0.4.1",
+    "langchain-core>=1.2.16",
+    "langchain-google-genai>=4.2.1",
+    "langchain-groq>=1.1.2",
+    "langchain-pinecone>=0.2.13",
+    "langchain-text-splitters>=1.1.1",
+    "langgraph>=1.0.10",
+    "llama-parse>=0.6.94",
+    "nest-asyncio>=1.6.0",
+    "pdf2image>=1.17.0",
+    "pillow>=12.1.1",
+    "psycopg[binary]>=3.3.3",
+    "pwdlib[argon2]>=0.3.0",
+    "pyjwt>=2.12.1",
+    "pymupdf>=1.27.1",
+    "pypdf>=6.7.5",
+    "pytesseract>=0.3.13",
+    "python-dotenv>=1.2.1",
+    "python-multipart>=0.0.22",
+    "sentence-transformers>=5.2.3",
+    "sqlmodel>=0.0.37",
+    "xmltodict>=1.0.4",
+]
+[tool.uv]
+package = false

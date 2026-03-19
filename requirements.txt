@@ -1,0 +1,27 @@
+langchain
+langchain-groq
+langchain-community
+langchain-core
+langchain-classic
+langchain-pinecone
+fastapi[standard]
+sentence-transformers
+langchain_text_splitters
+python-dotenv
+pymupdf
+Pillow
+pdf2image
+pytesseract
+duckduckgo-search
+
+# Database
+sqlmodel
+psycopg[binary]
+alembic
+
+# Authentication & Security
+pwdlib[argon2]
+pyjwt
+python-multipart
+authlib
+httpx

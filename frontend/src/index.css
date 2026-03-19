@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 1. Global Reset */
+body {
+  @apply bg-[#121416] text-[#e2e2e5] antialiased;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* We handle scrolling inside components */
+}
+
+/* 2. Medical-Grade Custom Scrollbar */
+/* Logic: Narrow and dark so it doesn't distract from clinical data */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #333537;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #414754;
+}
+
+/* 3. Glassmorphism Effect */
+.glass-effect {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* 4. Smooth Transitions for UI Elements */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
