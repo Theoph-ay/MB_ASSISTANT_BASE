@@ -1,13 +1,70 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* ── Stitch Clinical Dark Mode Design Tokens (TW4 CSS-first) ── */
+@theme {
+  --color-error: #ffb4ab;
+  --color-on-tertiary-fixed-variant: #7c2e00;
+  --color-on-secondary-fixed: #001a41;
+  --color-tertiary: #ffb695;
+  --color-on-secondary-container: #9bb8f6;
+  --color-tertiary-fixed: #ffdbcc;
+  --color-on-surface-variant: #c1c6d7;
+  --color-on-primary-fixed-variant: #004493;
+  --color-surface-container-lowest: #0c0e10;
+  --color-inverse-primary: #005bc0;
+  --color-primary: #adc7ff;
+  --color-on-tertiary-container: #4c1a00;
+  --color-error-container: #93000a;
+  --color-secondary-container: #29487f;
+  --color-surface-variant: #333537;
+  --color-tertiary-container: #ef6719;
+  --color-primary-container: #4a8eff;
+  --color-on-primary-fixed: #001a41;
+  --color-on-secondary: #072f64;
+  --color-tertiary-fixed-dim: #ffb695;
+  --color-on-error-container: #ffdad6;
+  --color-surface-container: #1e2022;
+  --color-on-error: #690005;
+  --color-surface-tint: #adc7ff;
+  --color-surface-container-highest: #333537;
+  --color-outline-variant: #414754;
+  --color-surface-dim: #121416;
+  --color-outline: #8b90a0;
+  --color-on-secondary-fixed-variant: #26467c;
+  --color-surface-bright: #37393b;
+  --color-on-tertiary: #571e00;
+  --color-background: #121416;
+  --color-on-tertiary-fixed: #351000;
+  --color-secondary-fixed-dim: #adc7ff;
+  --color-secondary: #adc7ff;
+  --color-inverse-on-surface: #2f3133;
+  --color-inverse-surface: #e2e2e5;
+  --color-surface: #121416;
+  --color-on-background: #e2e2e5;
+  --color-surface-container-high: #282a2c;
+  --color-secondary-fixed: #d8e2ff;
+  --color-primary-fixed-dim: #adc7ff;
+  --color-primary-fixed: #d8e2ff;
+  --color-on-surface: #e2e2e5;
+  --color-on-primary-container: #00285b;
+  --color-on-primary: #002e68;
+  --color-surface-container-low: #1a1c1e;
+
+  --font-family-headline: "Manrope", sans-serif;
+  --font-family-body: "Inter", sans-serif;
+  --font-family-label: "Inter", sans-serif;
+}
 
 /* 1. Global Reset */
 body {
-  @apply bg-surface text-on-surface antialiased;
+  background-color: #121416;
+  color: #e2e2e5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   margin: 0;
   padding: 0;
   overflow: hidden;
+  font-family: "Inter", sans-serif;
 }
 
 /* 2. Material Symbols Default Settings */
