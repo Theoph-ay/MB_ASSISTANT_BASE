@@ -7,7 +7,7 @@ env_path = Path(__file__).resolve().parent.parent.parent / ".env"
 
 class Settings(BaseSettings):
     vision_model: str = "meta-llama/llama-4-scout-17b-16e-instruct"
-    llm: str = "openai/gpt-oss-120b"
+    llm: str = "meta-llama/llama-4-scout-17b-16e-instruct"  #openai/gpt-oss-120b
     #db url in .env format : DATABASE_URL=postgresql+psycopg://dbuser:db-password@db_service:5432/mydb
     DATABASE_URL: str #Pydantic should get this from .env automatically
     PINECONE_API_KEY: str

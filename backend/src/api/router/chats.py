@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from typing import List
 from pydantic import BaseModel
 
+from src.api.agent import llm
 from src.db.session import get_session
 from src.models.chat import Chat
 from src.models.user import User
@@ -98,7 +99,6 @@ async def chat_with_assistant(
 
             # Auto-title: use LLM to generate a concise summary title
             if chat_record.title == "New Consultation":
-                from src.api.agent import llm
                 try:
                     title_resp = llm.invoke([
                         ("system", "Generate a concise 3-6 word title summarizing this medical question. Output ONLY the title, nothing else."),
