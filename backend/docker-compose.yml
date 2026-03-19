@@ -19,22 +19,22 @@ services:
 
   backend:
     build:
-      context: ../
-      dockerfile: backend/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     develop:
       watch:
         # Sync code changes and restart the container
         - action: sync+restart
           path: ./
-          target: /app/backend
+          target: /app
           ignore:
             - mb_assistant.db*
             - __pycache__/
         # Rebuild the image if dependencies change
         - action: rebuild
-          path: ../pyproject.toml
+          path: ./pyproject.toml
         - action: rebuild
-          path: ../uv.lock
+          path: ./uv.lock
     restart: unless-stopped
     depends_on:
       db_service:

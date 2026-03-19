@@ -4,12 +4,14 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from src.core.config import settings
 
 # Logic: We define a function to initialize embeddings to keep it clean
+
 def get_embeddings():
-    """Initializes the BGE embedding model."""
+    """Initializes the BGE embedding model locally for maximum reliability."""
     return HuggingFaceEmbeddings(
         model_name="BAAI/bge-large-en-v1.5",
         encode_kwargs={'normalize_embeddings': True}
     )
+
 embeddings = get_embeddings()
 
 vectorstore = PineconeVectorStore(

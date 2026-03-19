@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     PINECONE_API_KEY: str
     PINECONE_INDEX_NAME: str
     GROQ_API_KEY: str
+    HUGGINGFACE_TOKEN: str
 
     model_config = SettingsConfigDict(
         env_file=str(env_path),
