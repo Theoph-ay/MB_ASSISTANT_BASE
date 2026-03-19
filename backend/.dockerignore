@@ -1,0 +1,14 @@
+# Ignore frontend and local environment bloat
+node_modules
+frontend
+dist
+build
+.git
+.env
+__pycache__
+*.pyc
+venv
+.venv
+.ipynb_checkpoints
+data/*.csv
+data/*.json
