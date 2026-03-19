@@ -15,13 +15,17 @@ from src.api.agent import agent_executor
 router = APIRouter()
 
 
-# ── Schemas for rename / delete ──
+# ── Schemas for rename / delete / share ──
 class RenameRequest(BaseModel):
     thread_id: uuid.UUID
     new_title: str
 
 
 class DeleteRequest(BaseModel):
+    thread_id: uuid.UUID
+
+
+class ShareRequest(BaseModel):
     thread_id: uuid.UUID
 
 
@@ -200,3 +204,48 @@ async def delete_session(
     db.delete(chat)
     db.commit()
     return {"status": "success", "message": "Session deleted."}
+
+
+# ── POST /share  –  generate a share link ──
+@router.post("/share")
+async def share_session(
+    body: ShareRequest,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    chat = db.exec(
+        select(Chat).where(Chat.thread_id == body.thread_id, Chat.user_id == current_user.id)
+    ).first()
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+
+    # Generate a share_id if one doesn't exist (storing it as the summary field for now)
+    if not chat.summary or not chat.summary.startswith("share:"):
+        share_id = str(uuid.uuid4())[:8]
+        chat.summary = f"share:{share_id}"
+        db.add(chat)
+        db.commit()
+        db.refresh(chat)
+    else:
+        share_id = chat.summary.replace("share:", "")
+
+    return {"share_id": share_id, "thread_id": str(chat.thread_id)}
+
+
+# ── GET /shared/{share_id}  –  public access (no wallet needed) ──
+@router.get("/shared/{share_id}")
+async def get_shared_chat(
+    share_id: str,
+    db: Session = Depends(get_session),
+):
+    chat = db.exec(
+        select(Chat).where(Chat.summary == f"share:{share_id}")
+    ).first()
+    if not chat:
+        raise HTTPException(status_code=404, detail="Shared chat not found")
+
+    return {
+        "title": chat.title,
+        "messages": chat.messages or [],
+        "created_at": str(chat.created_at),
+    }

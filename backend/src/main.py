@@ -40,8 +40,8 @@ async def verify_wallet_address(request: Request, call_next):
     if request.url.path.startswith("/docs") or request.url.path.startswith("/openapi.json") or request.url.path == "/":
         return await call_next(request)
         
-    # Protect API paths
-    if request.url.path.startswith("/api"):
+    # Protect API paths (skip shared links — they are public)
+    if request.url.path.startswith("/api") and "/shared/" not in request.url.path:
         wallet_address = request.headers.get("x-wallet-address")
         if not wallet_address:
             return JSONResponse(status_code=401, content={"detail": "Clinical Access Required: Missing Wallet Address"})

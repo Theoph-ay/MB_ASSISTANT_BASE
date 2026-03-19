@@ -14,7 +14,7 @@ const wagmiConfig = createConfig({
   chains: [base],
   connectors: [
     coinbaseWallet({
-      appName: 'MB_ASSISTANT',
+      appName: 'NEXUS AI',
     }),
   ],
   transports: {

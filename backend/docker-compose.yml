@@ -1,0 +1,37 @@
+# ── NEXUS AI — Docker Compose ──
+services:
+  db_service:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: drlayi
+      POSTGRES_PASSWORD: drlayi1
+      POSTGRES_DB: mbassistant
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U drlayi -d mbassistant"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ../
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db_service:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Override the SQLite URL from .env to point to PostgreSQL
+      DATABASE_URL: postgresql+psycopg://drlayi:drlayi1@db_service:5432/mbassistant
+
+volumes:
+  pgdata:

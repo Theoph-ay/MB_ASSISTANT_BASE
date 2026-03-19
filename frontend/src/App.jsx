@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ConnectWallet, Wallet, WalletDropdown, WalletDropdownDisconnect } from '@coinbase/onchainkit/wallet';
 import { Address, Avatar, Name, Identity } from '@coinbase/onchainkit/identity';
-import { useAccount } from 'wagmi';
+import { useAccount, useDisconnect } from 'wagmi';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import ClinicalPay from './ClinicalPay';
@@ -18,9 +18,93 @@ function Icon({ name, fill = false, size = 'text-[20px]', className = '' }) {
   );
 }
 
+/* ── Profile Panel ── */
+function ProfilePanel({ onClose, sessions, address }) {
+  const { disconnect } = useDisconnect();
+  const firstSession = sessions.length > 0
+    ? new Date(sessions[sessions.length - 1].updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : 'Today';
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      {/* Panel */}
+      <div className="relative ml-auto w-[340px] h-full bg-surface-container-low border-l border-surface-variant/30 shadow-2xl shadow-black/40 flex flex-col animate-in slide-in-from-right">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-surface-variant/30">
+          <h2 className="font-headline font-bold text-lg text-on-surface">Profile</h2>
+          <button onClick={onClose} className="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors">
+            <Icon name="close" size="text-[20px]" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+          {/* Wallet Identity */}
+          <div className="flex flex-col items-center text-center gap-3 py-4">
+            <div className="w-20 h-20 rounded-full surgical-gradient flex items-center justify-center shadow-lg shadow-primary/20">
+              <Icon name="account_circle" size="text-5xl" className="text-on-primary-container" />
+            </div>
+            <div>
+              <p className="font-headline font-bold text-on-surface text-lg">
+                {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Unknown'}
+              </p>
+              <p className="text-on-surface-variant text-xs font-medium mt-1">Base Network</p>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-surface-container-high rounded-lg p-4 text-center">
+              <p className="font-headline text-2xl font-bold text-primary">{sessions.length}</p>
+              <p className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest mt-1">Consultations</p>
+            </div>
+            <div className="bg-surface-container-high rounded-lg p-4 text-center">
+              <p className="font-headline text-sm font-bold text-primary leading-tight">{firstSession}</p>
+              <p className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest mt-1">Member Since</p>
+            </div>
+          </div>
+
+          {/* Info */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3 p-3 bg-surface-container-high rounded-lg">
+              <Icon name="wallet" size="text-[18px]" className="text-primary flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest">Wallet Address</p>
+                <p className="text-on-surface text-xs font-mono truncate mt-0.5">{address || '—'}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-surface-container-high rounded-lg">
+              <Icon name="verified" size="text-[18px]" className="text-primary flex-shrink-0" />
+              <div>
+                <p className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest">Status</p>
+                <p className="text-on-surface text-xs font-bold mt-0.5">Active • Paid</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 border-t border-surface-variant/30">
+          <button
+            onClick={() => { disconnect(); onClose(); }}
+            className="w-full flex items-center justify-center gap-2 h-11 rounded-lg border border-error/30 text-error font-headline font-bold text-sm hover:bg-error/10 transition-colors"
+          >
+            <Icon name="logout" size="text-[18px]" /> Disconnect Wallet
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const { address, isConnected } = useAccount();
   const [hasPaid, setHasPaid] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareLink, setShareLink] = useState('');
 
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'Welcome, Colleague. How can I assist with your clinical cases or ENT revision today?' }
@@ -41,6 +125,9 @@ export default function App() {
   const threadId = useRef(crypto.randomUUID());
   const menuRef = useRef(null);
 
+  // Admin wallet bypass (works in both dev and prod)
+  const ADMIN_WALLET = (import.meta.env.VITE_ADMIN_WALLET || '').toLowerCase();
+
   // Close 3-dot menu when clicking outside
   useEffect(() => {
     const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpenId(null); };
@@ -59,11 +146,18 @@ export default function App() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
-  // Check payment status from localStorage
+  // Check payment status from localStorage + admin bypass
   useEffect(() => {
     if (address) {
-      const paid = localStorage.getItem(`mb_assistant_paid_${address}`);
+      // Admin bypass: auto-pay if wallet matches
+      if (ADMIN_WALLET && address.toLowerCase() === ADMIN_WALLET) {
+        setHasPaid(true);
+        return;
+      }
+      const paid = localStorage.getItem(`nexus_ai_paid_${address}`);
       setHasPaid(paid === 'true');
+    } else {
+      setHasPaid(false);
     }
   }, [address]);
 
@@ -108,11 +202,14 @@ export default function App() {
 
   const handlePaymentSuccess = () => {
     setHasPaid(true);
-    localStorage.setItem(`mb_assistant_paid_${address}`, 'true');
+    localStorage.setItem(`nexus_ai_paid_${address}`, 'true');
   };
 
   const handleSend = async () => {
     if (!input.trim() || isStreaming) return;
+    // Block sending if not connected or not paid
+    if (!isConnected || !hasPaid) return;
+
     const userMessage = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
@@ -162,7 +259,6 @@ export default function App() {
       return;
     }
     
-    // Optimistically truncate local state
     const newHistory = messages.slice(0, index);
     newHistory.push({ role: 'user', content: editCache });
     setMessages(newHistory);
@@ -170,10 +266,6 @@ export default function App() {
     setIsStreaming(true);
 
     try {
-      // Tell backend to truncate history up to `index` and insert the new message
-      // Note: We need to modify backend `/edit` endpoint to allow resubmission, 
-      // or we can call `/edit` then `/chat`. For now, let's call `/edit` to truncate,
-      // and then call `/chat` normally (assuming backend `/edit` is fixed to just truncate).
       await fetch('http://localhost:8000/api/v1/chat/edit', {
         method: 'PATCH',
         headers: {
@@ -187,11 +279,6 @@ export default function App() {
         }),
       });
 
-      // Now call chat again with the new message
-      // Notice we do NOT send the message in the `messages` array, we send it as a fresh `POST /chat`
-      // Wait, if the backend `/edit` appends the user message as per current logic, calling POST /chat with the same message appends it TWICE.
-      // I will fix the backend `/edit` to ONLY truncate, leaving the user message to be appended by `/chat`. 
-      // Actually, if we just send the message to `/chat` now:
       const response = await fetch('http://localhost:8000/api/v1/chat/chat', {
         method: 'POST',
         headers: {
@@ -233,95 +320,75 @@ export default function App() {
 
   const toggleSidebar = () => setSidebarOpen(prev => !prev);
 
-  /* ─────────────────────────────  LOGIN SCREEN  ───────────────────────────── */
-  if (!isConnected) {
-    return (
-      <div className="min-h-screen flex flex-col md:flex-row font-body">
-        {/* Left Branding Panel */}
-        <section className="hidden lg:flex lg:w-1/2 relative bg-surface-container-low items-center justify-center overflow-hidden">
-          <div className="absolute inset-0 opacity-10 pointer-events-none">
-            <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-primary blur-[120px]" />
-            <div className="absolute bottom-[-5%] right-[-5%] w-[40%] h-[40%] rounded-full bg-secondary blur-[100px]" />
-          </div>
-          <div className="relative z-10 px-12 text-center lg:text-left">
-            <div className="mb-8 flex items-center gap-4">
-              <img src="/avatar.png" alt="NEXUS AI Avatar" className="w-12 h-12 rounded-full shadow-lg shadow-primary/20" />
-              <h1 className="font-headline font-extrabold text-3xl tracking-tight text-primary">NEXUS AI</h1>
-            </div>
-            <h2 className="font-headline text-5xl font-bold text-on-surface leading-tight mb-6">
-              Clinical intelligence <br />
-              <span className="text-on-surface-variant font-medium">reimagined for students.</span>
-            </h2>
-            <p className="text-on-surface-variant text-lg max-w-md leading-relaxed mb-10">
-              Access AI-powered clinical case review, ENT revision, and diagnostic assistance — gated by Base network for the MBBS 2027 cohort.
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-6 rounded-xl bg-surface-container-high shadow-lg shadow-black/20">
-                <Icon name="security" className="text-primary mb-2" />
-                <div className="text-on-surface font-semibold">On-Chain Gated</div>
-                <div className="text-xs text-on-surface-variant mt-1">Base Network USDC</div>
-              </div>
-              <div className="p-6 rounded-xl bg-surface-container-high shadow-lg shadow-black/20">
-                <Icon name="bolt" className="text-primary mb-2" />
-                <div className="text-on-surface font-semibold">Real-time AI</div>
-                <div className="text-xs text-on-surface-variant mt-1">Streaming Responses</div>
-              </div>
-            </div>
-          </div>
-        </section>
+  // ── Share consultation ──
+  const handleShare = async () => {
+    if (!canChat) return;
+    try {
+      const res = await fetch('http://localhost:8000/api/v1/chat/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-wallet-address': address || 'anonymous' },
+        body: JSON.stringify({ thread_id: threadId.current }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const link = `${window.location.origin}/shared/${data.share_id}`;
+        setShareLink(link);
+        setShowShareModal(true);
+      } else {
+        showToast('Start a conversation before sharing');
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('Could not generate share link');
+    }
+  };
 
-        {/* Right Login Panel */}
-        <section className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 lg:p-24 bg-surface">
-          <div className="lg:hidden mb-12 flex items-center gap-3">
-            <img src="/avatar.png" alt="NEXUS AI" className="w-10 h-10 rounded-full" />
-            <span className="font-headline font-bold text-xl tracking-tight text-primary">NEXUS AI</span>
-          </div>
-          <div className="w-full max-w-md">
-            <header className="mb-10 text-center lg:text-left">
-              <h3 className="font-headline text-2xl font-bold text-on-surface mb-2">Connect to the Clinical Suite</h3>
-              <p className="text-on-surface-variant font-medium">Connect your Base wallet to access the portal</p>
-            </header>
+  // ── Download as PDF ──
+  const handleDownloadPDF = () => {
+    // Build a clean HTML document for printing
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) { showToast('Please allow popups to download PDF'); return; }
 
-            <Wallet>
-              <ConnectWallet className="w-full surgical-gradient text-on-primary font-headline font-bold text-lg rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-2 h-14">
-                <Avatar className="h-6 w-6" />
-                <Name />
-              </ConnectWallet>
-              <WalletDropdown>
-                <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
-                  <Avatar />
-                  <Name />
-                  <Address />
-                </Identity>
-                <WalletDropdownDisconnect />
-              </WalletDropdown>
-            </Wallet>
+    const chatHTML = messages.map(m => {
+      const role = m.role === 'user' ? 'Student' : 'NEXUS AI';
+      const bg = m.role === 'user' ? '#e3f2fd' : '#f5f5f5';
+      const align = m.role === 'user' ? 'right' : 'left';
+      return `<div style="margin:12px 0;text-align:${align}">
+        <div style="display:inline-block;max-width:80%;background:${bg};padding:14px 18px;border-radius:12px;text-align:left">
+          <strong style="color:#1a73e8;font-size:12px;text-transform:uppercase;letter-spacing:1px">${role}</strong>
+          <div style="margin-top:6px;font-size:14px;line-height:1.7;white-space:pre-wrap">${m.content}</div>
+        </div>
+      </div>`;
+    }).join('');
 
-            <div className="mt-10 pt-8 border-t border-outline-variant/20 text-center">
-              <p className="text-on-surface-variant">
-                Don't have a wallet?
-                <a className="ml-1 font-bold text-primary hover:text-primary-container transition-colors" href="https://www.coinbase.com/wallet" target="_blank" rel="noreferrer">
-                  Get Coinbase Wallet
-                </a>
-              </p>
-            </div>
-          </div>
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>NEXUS AI Consultation</title>
+        <style>
+          body { font-family: 'Segoe UI', system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a; }
+          h1 { font-size: 20px; color: #1a73e8; border-bottom: 2px solid #e8eaed; padding-bottom: 12px; }
+          .meta { font-size: 11px; color: #666; margin-bottom: 24px; }
+          @media print { body { padding: 20px; } }
+        </style>
+      </head>
+      <body>
+        <h1>NEXUS AI — Clinical Consultation</h1>
+        <div class="meta">Exported ${new Date().toLocaleString()} • ${messages.length} messages</div>
+        ${chatHTML}
+        <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e8eaed;font-size:10px;color:#999;text-align:center">
+          © ${new Date().getFullYear()} Theophilus Olayiwola • NEXUS AI Clinical Engine
+        </div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.onload = () => { printWindow.print(); };
+  };
 
-          <div className="mt-auto pt-12 flex flex-wrap justify-center gap-6 opacity-40">
-            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-              <Icon name="verified_user" size="text-sm" /> BASE NETWORK
-            </div>
-            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-              <Icon name="gpp_good" size="text-sm" /> ONCHAINKIT
-            </div>
-            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-              <Icon name="health_and_safety" size="text-sm" /> CLINICAL GRADE
-            </div>
-          </div>
-        </section>
-      </div>
-    );
-  }
+  // Determine which view gate to show
+  const canChat = isConnected && hasPaid;
 
   /* ───────────────────────────  PAYMENT GATE  ─────────────────────────────── */
   if (isConnected && !hasPaid) {
@@ -337,6 +404,15 @@ export default function App() {
           <Icon name="check_circle" size="text-[18px]" className="text-primary" />
           {toastMessage}
         </div>
+      )}
+
+      {/* Profile Panel */}
+      {showProfile && (
+        <ProfilePanel
+          onClose={() => setShowProfile(false)}
+          sessions={sessions}
+          address={address}
+        />
       )}
 
       {/* ── Sidebar ── */}
@@ -358,7 +434,8 @@ export default function App() {
           <div className="flex flex-col gap-4">
             <button
               onClick={handleNewConsultation}
-              className="w-full h-11 surgical-gradient text-on-primary-container font-headline font-bold text-sm rounded flex items-center justify-center gap-2 hover:opacity-90 transition-opacity shadow-[0_8px_16px_rgba(74,142,255,0.15)]"
+              disabled={!canChat}
+              className="w-full h-11 surgical-gradient text-on-primary-container font-headline font-bold text-sm rounded flex items-center justify-center gap-2 hover:opacity-90 transition-opacity shadow-[0_8px_16px_rgba(74,142,255,0.15)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Icon name="add" size="text-[20px]" /> New Consultation
             </button>
@@ -377,7 +454,12 @@ export default function App() {
           {/* Navigation */}
           <nav className="flex flex-col gap-1 flex-1 overflow-y-auto custom-scrollbar -mx-2 px-2">
             <h2 className="text-on-surface-variant font-label text-[10px] uppercase font-bold tracking-widest mb-2 mt-4 px-2">Recent Consultations</h2>
-            {sessions.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase())).map(session => (
+            {!canChat && (
+              <div className="px-3 py-4 text-center text-on-surface-variant text-xs font-medium">
+                Connect wallet to see your sessions.
+              </div>
+            )}
+            {canChat && sessions.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase())).map(session => (
               <div key={session.thread_id} className="relative group/session">
                 {/* Rename inline input */}
                 {renameId === session.thread_id ? (
@@ -442,7 +524,6 @@ export default function App() {
                           headers: { 'x-wallet-address': address || 'anonymous' },
                         });
                         setMenuOpenId(null);
-                        // If we deleted the active session, start fresh
                         if (threadId.current === session.thread_id) handleNewConsultation();
                         loadSessions();
                         showToast('Session deleted');
@@ -455,7 +536,7 @@ export default function App() {
                 )}
               </div>
             ))}
-            {sessions.length === 0 && (
+            {canChat && sessions.length === 0 && (
               <div className="px-3 py-4 text-center text-on-surface-variant text-xs font-medium">
                 No consultations yet.
               </div>
@@ -464,23 +545,36 @@ export default function App() {
 
           {/* User Identity - OnchainKit */}
           <div className="mt-auto pt-4 flex items-center justify-between border-t border-surface-variant/30">
-            <Wallet>
-              <ConnectWallet className="flex items-center gap-3 hover:bg-surface-container-high p-2 -ml-2 rounded cursor-pointer transition-colors flex-1 bg-transparent border-none text-on-surface">
-                <Avatar className="w-8 h-8 rounded flex-shrink-0" />
-                <div className="flex flex-col truncate">
-                  <Name className="text-on-surface font-headline font-bold text-sm leading-tight truncate" />
-                </div>
-              </ConnectWallet>
-              <WalletDropdown className="border border-outline-variant bg-surface-container-low">
-                <Identity className="px-4 pt-3 pb-2 hover:bg-surface-container-high" hasCopyAddressOnClick>
-                  <Avatar />
-                  <Name className="text-on-surface" />
-                  <Address className="text-on-surface-variant" />
-                </Identity>
-                <WalletDropdownDisconnect className="hover:bg-surface-container-high text-error" />
-              </WalletDropdown>
-            </Wallet>
-            <button className="text-on-surface-variant hover:text-on-surface p-2 rounded hover:bg-surface-container-high transition-colors">
+            {isConnected ? (
+              <Wallet>
+                <ConnectWallet className="flex items-center gap-3 hover:bg-surface-container-high p-2 -ml-2 rounded cursor-pointer transition-colors flex-1 bg-transparent border-none text-on-surface">
+                  <Avatar className="w-8 h-8 rounded flex-shrink-0" />
+                  <div className="flex flex-col truncate">
+                    <Name className="text-on-surface font-headline font-bold text-sm leading-tight truncate" />
+                  </div>
+                </ConnectWallet>
+                <WalletDropdown className="border border-outline-variant bg-surface-container-low">
+                  <Identity className="px-4 pt-3 pb-2 hover:bg-surface-container-high" hasCopyAddressOnClick>
+                    <Avatar />
+                    <Name className="text-on-surface" />
+                    <Address className="text-on-surface-variant" />
+                  </Identity>
+                  <WalletDropdownDisconnect className="hover:bg-surface-container-high text-error" />
+                </WalletDropdown>
+              </Wallet>
+            ) : (
+              <Wallet>
+                <ConnectWallet className="flex items-center gap-2 surgical-gradient text-on-primary-container font-headline font-bold text-sm rounded px-4 py-2 hover:opacity-90 transition-opacity w-full justify-center">
+                  <Icon name="account_balance_wallet" size="text-[18px]" />
+                  Connect Wallet
+                </ConnectWallet>
+              </Wallet>
+            )}
+            <button
+              onClick={() => setShowProfile(true)}
+              disabled={!isConnected}
+              className="text-on-surface-variant hover:text-on-surface p-2 rounded hover:bg-surface-container-high transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
               <Icon name="settings" size="text-[20px]" />
             </button>
           </div>
@@ -498,13 +592,15 @@ export default function App() {
               </button>
             )}
             <h2 className="text-on-surface font-headline font-bold text-lg">NEXUS AI</h2>
-            <span className="px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label text-[10px] uppercase font-bold tracking-widest">Active</span>
+            <span className="px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label text-[10px] uppercase font-bold tracking-widest">
+              {canChat ? 'Active' : 'Connect Wallet'}
+            </span>
           </div>
           <div className="flex items-center gap-2">
-            <button className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors" title="Export to PDF">
+            <button onClick={handleDownloadPDF} disabled={!canChat} className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors disabled:opacity-30" title="Export to PDF">
               <Icon name="download" size="text-[20px]" />
             </button>
-            <button className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors" title="Share Consultation">
+            <button onClick={handleShare} disabled={!canChat} className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors disabled:opacity-30" title="Share Consultation">
               <Icon name="share" size="text-[20px]" />
             </button>
           </div>
@@ -539,13 +635,20 @@ export default function App() {
                   )}
                   {/* Action buttons (Hover) */}
                   {!editingIndex && (
-                    <div className="absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                    <div className="absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
                       <button
                         onClick={() => { setEditingIndex(i); setEditCache(msg.content); }}
                         className="p-1.5 rounded-full bg-[#21262d] border border-[#30363d] hover:bg-[#30363d] text-[#8b949e] hover:text-[#e6edf3] transition-colors shadow-sm"
                         title="Edit Message"
                       >
                         <Icon name="edit" size="text-[16px]" />
+                      </button>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(msg.content); showToast('Message copied to clipboard'); }}
+                        className="p-1.5 rounded-full bg-[#21262d] border border-[#30363d] hover:bg-[#30363d] text-[#8b949e] hover:text-[#e6edf3] transition-colors shadow-sm"
+                        title="Copy text"
+                      >
+                        <Icon name="content_copy" size="text-[16px]" />
                       </button>
                     </div>
                   )}
@@ -603,28 +706,43 @@ export default function App() {
         {/* Input Area */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-surface via-surface/90 to-transparent pt-10 pb-6 px-8 pointer-events-none">
           <div className="max-w-4xl mx-auto w-full pointer-events-auto">
-            <div className="bg-surface-bright/80 glass-effect rounded-[0.5rem] border border-outline-variant/30 shadow-[0_20px_40px_rgba(0,0,0,0.4)] flex items-end gap-2 p-3 transition-all focus-within:border-primary/50 focus-within:bg-surface-bright">
-              <button className="p-2.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors flex-shrink-0 mb-0.5" title="Attach Medical File">
-                <Icon name="attach_file" size="text-[20px]" />
-              </button>
-              <textarea
-                className="flex-1 max-h-32 bg-transparent border-none text-on-surface placeholder-on-surface-variant font-body text-[15px] resize-none focus:ring-0 p-2.5 custom-scrollbar leading-relaxed"
-                placeholder="Ask a clinical question, analyze data, or type a symptom..."
-                rows="1"
-                style={{ minHeight: '44px' }}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
-              />
-              <button
-                onClick={handleSend}
-                disabled={isStreaming}
-                className="w-10 h-10 rounded surgical-gradient text-on-primary-container flex items-center justify-center flex-shrink-0 hover:opacity-90 transition-opacity mb-0.5 shadow-[0_4px_12px_rgba(74,142,255,0.2)] disabled:opacity-50"
-              >
-                <Icon name="send" fill size="text-[20px]" />
-              </button>
-            </div>
-              <span className="text-on-surface-variant/70 font-label text-[10px] font-medium tracking-wide flex items-center justify-center gap-1 flex-wrap">
+            {canChat ? (
+              /* ── Connected & Paid: Normal Input ── */
+              <div className="bg-surface-bright/80 glass-effect rounded-[0.5rem] border border-outline-variant/30 shadow-[0_20px_40px_rgba(0,0,0,0.4)] flex items-end gap-2 p-3 transition-all focus-within:border-primary/50 focus-within:bg-surface-bright">
+                <button className="p-2.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors flex-shrink-0 mb-0.5" title="Attach Medical File">
+                  <Icon name="attach_file" size="text-[20px]" />
+                </button>
+                <textarea
+                  className="flex-1 max-h-32 bg-transparent border-none text-on-surface placeholder-on-surface-variant font-body text-[15px] resize-none focus:ring-0 p-2.5 custom-scrollbar leading-relaxed"
+                  placeholder="Ask a clinical question, analyze data, or type a symptom..."
+                  rows="1"
+                  style={{ minHeight: '44px' }}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={isStreaming}
+                  className="w-10 h-10 rounded surgical-gradient text-on-primary-container flex items-center justify-center flex-shrink-0 hover:opacity-90 transition-opacity mb-0.5 shadow-[0_4px_12px_rgba(74,142,255,0.2)] disabled:opacity-50"
+                >
+                  <Icon name="send" fill size="text-[20px]" />
+                </button>
+              </div>
+            ) : (
+              /* ── Not Connected: Prompt to connect ── */
+              <div className="bg-surface-bright/80 glass-effect rounded-[0.5rem] border border-outline-variant/30 shadow-[0_20px_40px_rgba(0,0,0,0.4)] flex items-center justify-center gap-4 p-4">
+                <Icon name="lock" size="text-[20px]" className="text-on-surface-variant" />
+                <p className="text-on-surface-variant font-body text-sm">Connect your wallet to start chatting with NEXUS AI</p>
+                <Wallet>
+                  <ConnectWallet className="surgical-gradient text-on-primary-container font-headline font-bold text-sm rounded-lg px-5 py-2.5 hover:opacity-90 transition-opacity shadow-[0_4px_12px_rgba(74,142,255,0.2)] flex items-center gap-2">
+                    <Icon name="account_balance_wallet" size="text-[16px]" />
+                    Connect
+                  </ConnectWallet>
+                </Wallet>
+              </div>
+            )}
+              <span className="text-on-surface-variant/70 font-label text-[10px] font-medium tracking-wide flex items-center justify-center gap-1 flex-wrap mt-3">
                 <span>NEXUS AI can make mistakes. Always verify critical clinical information.</span>
                 <span className="opacity-50 mx-1">•</span>
                 <span>&copy; {new Date().getFullYear()} Theophilus Olayiwola</span>
@@ -632,6 +750,37 @@ export default function App() {
           </div>
         </div>
       </main>
+
+      {/* ── Share Modal ── */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowShareModal(false)} />
+          <div className="relative bg-surface-container-low border border-outline-variant/30 rounded-xl shadow-2xl shadow-black/50 p-8 w-full max-w-md mx-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-headline font-bold text-lg text-on-surface">Share Consultation</h3>
+              <button onClick={() => setShowShareModal(false)} className="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors">
+                <Icon name="close" size="text-[20px]" />
+              </button>
+            </div>
+            <p className="text-on-surface-variant text-sm mb-4">Anyone with this link can view this consultation (read-only).</p>
+            <div className="flex items-center gap-2 bg-surface-container-high rounded-lg p-3 border border-outline-variant/20">
+              <Icon name="link" size="text-[18px]" className="text-primary flex-shrink-0" />
+              <input
+                readOnly
+                value={shareLink}
+                className="flex-1 bg-transparent text-on-surface text-sm font-mono truncate focus:outline-none"
+                onClick={(e) => e.target.select()}
+              />
+              <button
+                onClick={() => { navigator.clipboard.writeText(shareLink); showToast('Link copied to clipboard'); }}
+                className="px-3 py-1.5 surgical-gradient text-on-primary-container font-headline font-bold text-xs rounded hover:opacity-90 transition-opacity flex items-center gap-1 flex-shrink-0"
+              >
+                <Icon name="content_copy" size="text-[14px]" /> Copy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
