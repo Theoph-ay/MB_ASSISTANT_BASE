@@ -1,9 +1,11 @@
 import os
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Ensure we always look for .env in the backend folder
+env_path = Path(__file__).resolve().parent.parent.parent / ".env"
 
 class Settings(BaseSettings):
-
     vision_model: str = "meta-llama/llama-4-scout-17b-16e-instruct"
     llm: str = "openai/gpt-oss-120b"
     #db url in .env format : DATABASE_URL=postgresql+psycopg://dbuser:db-password@db_service:5432/mydb
@@ -13,11 +15,10 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(env_path),
         env_file_encoding="utf-8",
         extra="ignore"
     )
-
 
 settings = Settings()
 
