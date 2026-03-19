@@ -29,9 +29,9 @@ export default function ClinicalPay({ onSuccess }) {
           <div className="absolute right-40 bottom-20 w-64 h-64 rounded-full bg-secondary-container blur-[100px]" />
         </div>
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-12">
-            <Icon name="clinical_notes" size="text-4xl" className="text-primary" />
-            <h1 className="font-headline font-extrabold text-2xl tracking-tight text-primary">MB Assistant</h1>
+          <div className="flex items-center gap-4 mb-12">
+            <img src="/avatar.png" alt="NEXUS AI Avatar" className="w-12 h-12 rounded-full shadow-[0_0_15px_rgba(74,142,255,0.3)]" />
+            <h1 className="font-headline font-extrabold text-2xl tracking-tight text-primary">NEXUS AI</h1>
           </div>
           <h2 className="font-headline text-5xl font-extrabold text-on-surface leading-tight max-w-lg">
             Precision AI for the <span className="text-primary">Next Generation</span> of Medicine.
@@ -58,9 +58,9 @@ export default function ClinicalPay({ onSuccess }) {
 
       {/* Right Payment Panel */}
       <section className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 lg:p-24 bg-surface">
-        <div className="lg:hidden mb-12 flex items-center gap-2">
-          <Icon name="clinical_notes" size="text-3xl" className="text-primary" />
-          <span className="font-headline font-extrabold text-xl tracking-tight text-primary">MB Assistant</span>
+        <div className="lg:hidden mb-12 flex items-center gap-3">
+          <img src="/avatar.png" alt="NEXUS AI" className="w-10 h-10 rounded-full" />
+          <span className="font-headline font-extrabold text-xl tracking-tight text-primary">NEXUS AI</span>
         </div>
 
         <div className="w-full max-w-md">

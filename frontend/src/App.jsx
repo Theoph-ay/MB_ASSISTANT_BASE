@@ -244,9 +244,9 @@ export default function App() {
             <div className="absolute bottom-[-5%] right-[-5%] w-[40%] h-[40%] rounded-full bg-secondary blur-[100px]" />
           </div>
           <div className="relative z-10 px-12 text-center lg:text-left">
-            <div className="mb-8 flex items-center gap-3">
-              <Icon name="clinical_notes" size="text-4xl" className="text-primary" />
-              <h1 className="font-headline font-extrabold text-3xl tracking-tight text-primary">MB Assistant</h1>
+            <div className="mb-8 flex items-center gap-4">
+              <img src="/avatar.png" alt="NEXUS AI Avatar" className="w-12 h-12 rounded-full shadow-lg shadow-primary/20" />
+              <h1 className="font-headline font-extrabold text-3xl tracking-tight text-primary">NEXUS AI</h1>
             </div>
             <h2 className="font-headline text-5xl font-bold text-on-surface leading-tight mb-6">
               Clinical intelligence <br />
@@ -272,9 +272,9 @@ export default function App() {
 
         {/* Right Login Panel */}
         <section className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 lg:p-24 bg-surface">
-          <div className="lg:hidden mb-12 flex items-center gap-2">
-            <Icon name="clinical_notes" size="text-3xl" className="text-primary" />
-            <span className="font-headline font-bold text-xl tracking-tight text-primary">MB Assistant</span>
+          <div className="lg:hidden mb-12 flex items-center gap-3">
+            <img src="/avatar.png" alt="NEXUS AI" className="w-10 h-10 rounded-full" />
+            <span className="font-headline font-bold text-xl tracking-tight text-primary">NEXUS AI</span>
           </div>
           <div className="w-full max-w-md">
             <header className="mb-10 text-center lg:text-left">
@@ -344,11 +344,9 @@ export default function App() {
         <div className="p-6 flex flex-col h-full gap-8 min-w-[280px]">
           {/* Logo */}
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg surgical-gradient flex items-center justify-center text-on-primary-container flex-shrink-0 shadow-[0_4px_12px_rgba(74,142,255,0.2)]">
-              <Icon name="stethoscope" size="text-2xl" />
-            </div>
+            <img src="/avatar.png" alt="NEXUS AI Avatar" className="w-10 h-10 rounded-full object-cover shadow-[0_4px_12px_rgba(74,142,255,0.2)]" />
             <div className="flex flex-col flex-1">
-              <h1 className="text-on-surface font-headline font-bold text-lg leading-tight tracking-tight">MB Assistant</h1>
+              <h1 className="text-on-surface font-headline font-bold text-lg leading-tight tracking-tight">NEXUS AI</h1>
               <p className="text-on-surface-variant font-label text-xs uppercase tracking-wider font-bold">Clinical Engine</p>
             </div>
             <button onClick={toggleSidebar} className="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Collapse sidebar">
@@ -499,7 +497,7 @@ export default function App() {
                 <Icon name="menu" size="text-[20px]" />
               </button>
             )}
-            <h2 className="text-on-surface font-headline font-bold text-lg">MB Assistant</h2>
+            <h2 className="text-on-surface font-headline font-bold text-lg">NEXUS AI</h2>
             <span className="px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label text-[10px] uppercase font-bold tracking-widest">Active</span>
           </div>
           <div className="flex items-center gap-2">
@@ -557,10 +555,8 @@ export default function App() {
               /* ── AI Message ── */
               <div key={i} className="flex flex-col items-start gap-1 w-full max-w-4xl mx-auto group">
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="w-5 h-5 rounded surgical-gradient flex items-center justify-center text-on-primary">
-                    <Icon name="stethoscope" size="text-[14px]" />
-                  </div>
-                  <span className="text-primary font-headline text-sm font-bold tracking-wide">MB Assistant</span>
+                  <img src="/avatar.png" alt="NEXUS AI Avatar" className="w-6 h-6 rounded-full object-cover shadow-sm shadow-primary/30" />
+                  <span className="text-primary font-headline text-sm font-bold tracking-wide">NEXUS AI</span>
                 </div>
                 <div className="relative bg-[#161b22] text-[#e6edf3] p-6 rounded-[0.75rem] rounded-tl-[0.25rem] max-w-[90%] border border-[#30363d] shadow-[0_2px_8px_rgba(0,0,0,0.2)]">
                   <div className="font-body text-[15px] leading-[1.7] prose prose-invert max-w-none prose-p:my-2 prose-headings:my-3 prose-headings:font-headline prose-headings:text-[#e6edf3] prose-a:text-primary hover:prose-a:text-primary-container prose-strong:text-[#e6edf3] prose-ul:my-2 prose-li:my-0.5 prose-th:text-[#e6edf3] prose-td:border-[#30363d] prose-th:border-[#30363d] prose-table:border-[#30363d]">
@@ -585,15 +581,13 @@ export default function App() {
           {isStreaming && messages[messages.length - 1]?.content === '' && (
             <div className="flex flex-col items-start gap-1 w-full max-w-4xl mx-auto">
               <div className="flex items-center gap-2 mb-1">
-                <div className="w-5 h-5 rounded surgical-gradient flex items-center justify-center text-on-primary">
-                  <Icon name="stethoscope" size="text-[14px]" />
-                </div>
-                <span className="text-primary font-headline text-sm font-bold tracking-wide">MB Assistant</span>
+                <img src="/avatar.png" alt="NEXUS AI Avatar" className="w-6 h-6 rounded-full object-cover shadow-sm shadow-primary/30" />
+                <span className="text-primary font-headline text-sm font-bold tracking-wide">NEXUS AI</span>
               </div>
               <div className="bg-[#161b22] border border-[#30363d] rounded-[0.75rem] rounded-tl-[0.25rem] p-6 max-w-[90%] w-full">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  <span className="text-[#8b949e] font-label text-xs font-medium">MB Assistant is analyzing...</span>
+                  <span className="text-[#8b949e] font-label text-xs font-medium">NEXUS AI is analyzing...</span>
                 </div>
                 <div className="space-y-3 animate-pulse">
                   <div className="h-3 bg-[#30363d] rounded-full w-[85%]" />
@@ -631,7 +625,7 @@ export default function App() {
               </button>
             </div>
             <div className="text-center mt-3">
-              <span className="text-on-surface-variant/70 font-label text-[10px] font-medium tracking-wide">MB Assistant can make mistakes. Always verify critical clinical information.</span>
+              <span className="text-on-surface-variant/70 font-label text-[10px] font-medium tracking-wide">NEXUS AI can make mistakes. Always verify critical clinical information.</span>
             </div>
           </div>
         </div>
