@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ConnectWallet, Wallet, WalletDropdown, WalletDropdownDisconnect } from '@coinbase/onchainkit/wallet';
 import { Address, Avatar, Name, Identity } from '@coinbase/onchainkit/identity';
 import { useAccount } from 'wagmi';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import ClinicalPay from './ClinicalPay';
 
 /* ── Helper: Material Icon shorthand ── */
@@ -29,8 +31,14 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingIndex, setEditingIndex] = useState(null);
   const [editCache, setEditCache] = useState('');
+  const [toastMessage, setToastMessage] = useState('');
   const messagesEndRef = useRef(null);
   const threadId = useRef(crypto.randomUUID());
+
+  const showToast = (message) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(''), 2500);
+  };
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -306,7 +314,15 @@ export default function App() {
 
   /* ─────────────────────────  MAIN CHAT INTERFACE  ────────────────────────── */
   return (
-    <div className="flex h-screen w-full max-w-[1440px] mx-auto bg-surface-container-low">
+    <div className="flex h-screen w-full max-w-[1440px] mx-auto bg-surface-container-low relative">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 bg-inverse-surface text-inverse-on-surface px-6 py-3 rounded-full shadow-lg font-headline text-sm font-medium animate-in fade-in slide-in-from-top-4 flex items-center gap-2">
+          <Icon name="check_circle" size="text-[18px]" className="text-primary" />
+          {toastMessage}
+        </div>
+      )}
+
       {/* ── Sidebar ── */}
       <aside className="w-[280px] h-full flex flex-col bg-surface-container-low border-r border-transparent flex-shrink-0 z-20">
         <div className="p-6 flex flex-col h-full gap-8">
@@ -460,12 +476,14 @@ export default function App() {
                   <span className="text-primary font-headline text-sm font-bold tracking-wide">MB_ASSISTANT</span>
                 </div>
                 <div className="relative bg-secondary-container text-on-surface p-6 rounded-[0.5rem] rounded-tl-[0.25rem] max-w-[90%] shadow-[0_12px_32px_rgba(0,0,0,0.25)]">
-                  <p className="font-body text-[15px] leading-[1.6] whitespace-pre-wrap">{msg.content}</p>
+                  <div className="font-body text-[15px] leading-[1.6] prose prose-invert max-w-none prose-p:my-2 prose-headings:my-3 prose-headings:font-headline prose-a:text-primary hover:prose-a:text-primary-container prose-strong:text-on-surface prose-ul:my-2 prose-li:my-0.5">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                  </div>
                   {/* Action buttons (Hover) */}
                   {msg.content && (
                     <div className="absolute -right-12 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
                       <button
-                        onClick={() => navigator.clipboard.writeText(msg.content)}
+                        onClick={() => { navigator.clipboard.writeText(msg.content); showToast('Message copied to clipboard'); }}
                         className="p-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors shadow-sm"
                         title="Copy text"
                       >

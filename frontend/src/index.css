@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /* ── Stitch Clinical Dark Mode Design Tokens (TW4 CSS-first) ── */
 @theme {
