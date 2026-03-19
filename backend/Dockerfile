@@ -16,10 +16,10 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy application source
-COPY backend/ ./backend/
-COPY backend/alembic.ini ./backend/
+COPY . .
 
-WORKDIR /app/backend
+# Set the WORKDIR to /app (since we've already moved into the backend context)
+WORKDIR /app
 
 # Expose the API port
 EXPOSE 8000

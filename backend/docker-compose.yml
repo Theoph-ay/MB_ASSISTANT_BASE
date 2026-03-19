@@ -21,12 +21,30 @@ services:
     build:
       context: ../
       dockerfile: backend/Dockerfile
+    develop:
+      watch:
+        # Sync code changes and restart the container
+        - action: sync+restart
+          path: ./
+          target: /app/backend
+          ignore:
+            - mb_assistant.db*
+            - __pycache__/
+        # Rebuild the image if dependencies change
+        - action: rebuild
+          path: ../pyproject.toml
+        - action: rebuild
+          path: ../uv.lock
     restart: unless-stopped
     depends_on:
       db_service:
         condition: service_healthy
     ports:
       - "8000:8000"
+    volumes:
+      # Map your laptop's HuggingFace cache to the container
+      # so it doesn't need to redownload embedding models
+      - ~/.cache/huggingface:/root/.cache/huggingface
     env_file:
       - .env
     environment:
