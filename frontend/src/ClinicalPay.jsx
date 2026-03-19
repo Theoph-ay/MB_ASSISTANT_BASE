@@ -47,6 +47,16 @@ export default function ClinicalPay({ onSuccess }) {
             <Bot size={14} />
             <span>Secured by OnchainKit</span>
           </div>
+
+          {/* Dev Bypass Button */}
+          {import.meta.env.DEV && (
+            <button 
+              onClick={onSuccess} 
+              className="mt-6 w-full text-center text-[10px] text-[#adc7ff]/30 hover:text-[#adc7ff] underline transition-colors"
+            >
+              Skip Payment (Developer Bypass)
+            </button>
+          )}
         </div>
 
       </div>
