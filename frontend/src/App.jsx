@@ -25,6 +25,7 @@ export default function App() {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'Welcome, Colleague. How can I assist with your clinical cases or ENT revision today?' }
   ]);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sessions, setSessions] = useState([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -32,17 +33,30 @@ export default function App() {
   const [editingIndex, setEditingIndex] = useState(null);
   const [editCache, setEditCache] = useState('');
   const [toastMessage, setToastMessage] = useState('');
+  const [menuOpenId, setMenuOpenId] = useState(null);
+  const [renameId, setRenameId] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
   const messagesEndRef = useRef(null);
+  const scrollContainerRef = useRef(null);
   const threadId = useRef(crypto.randomUUID());
+  const menuRef = useRef(null);
+
+  // Close 3-dot menu when clicking outside
+  useEffect(() => {
+    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpenId(null); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const showToast = (message) => {
     setToastMessage(message);
     setTimeout(() => setToastMessage(''), 2500);
   };
 
-  // Scroll to bottom on new messages
+  // Auto-scroll to bottom on every message update (including each streaming chunk)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = scrollContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   // Check payment status from localStorage
@@ -217,6 +231,8 @@ export default function App() {
     ]);
   };
 
+  const toggleSidebar = () => setSidebarOpen(prev => !prev);
+
   /* ─────────────────────────────  LOGIN SCREEN  ───────────────────────────── */
   if (!isConnected) {
     return (
@@ -230,7 +246,7 @@ export default function App() {
           <div className="relative z-10 px-12 text-center lg:text-left">
             <div className="mb-8 flex items-center gap-3">
               <Icon name="clinical_notes" size="text-4xl" className="text-primary" />
-              <h1 className="font-headline font-extrabold text-3xl tracking-tight text-primary">MB_ASSISTANT</h1>
+              <h1 className="font-headline font-extrabold text-3xl tracking-tight text-primary">MB Assistant</h1>
             </div>
             <h2 className="font-headline text-5xl font-bold text-on-surface leading-tight mb-6">
               Clinical intelligence <br />
@@ -258,7 +274,7 @@ export default function App() {
         <section className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 lg:p-24 bg-surface">
           <div className="lg:hidden mb-12 flex items-center gap-2">
             <Icon name="clinical_notes" size="text-3xl" className="text-primary" />
-            <span className="font-headline font-bold text-xl tracking-tight text-primary">MB_ASSISTANT</span>
+            <span className="font-headline font-bold text-xl tracking-tight text-primary">MB Assistant</span>
           </div>
           <div className="w-full max-w-md">
             <header className="mb-10 text-center lg:text-left">
@@ -324,17 +340,20 @@ export default function App() {
       )}
 
       {/* ── Sidebar ── */}
-      <aside className="w-[280px] h-full flex flex-col bg-surface-container-low border-r border-transparent flex-shrink-0 z-20">
-        <div className="p-6 flex flex-col h-full gap-8">
+      <aside className={`${sidebarOpen ? 'w-[280px]' : 'w-0 overflow-hidden'} h-full flex flex-col bg-surface-container-low border-r border-transparent flex-shrink-0 z-20 transition-all duration-300`}>
+        <div className="p-6 flex flex-col h-full gap-8 min-w-[280px]">
           {/* Logo */}
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-lg surgical-gradient flex items-center justify-center text-on-primary-container flex-shrink-0 shadow-[0_4px_12px_rgba(74,142,255,0.2)]">
               <Icon name="stethoscope" size="text-2xl" />
             </div>
-            <div className="flex flex-col">
-              <h1 className="text-on-surface font-headline font-bold text-lg leading-tight tracking-tight">MB_ASSISTANT</h1>
+            <div className="flex flex-col flex-1">
+              <h1 className="text-on-surface font-headline font-bold text-lg leading-tight tracking-tight">MB Assistant</h1>
               <p className="text-on-surface-variant font-label text-xs uppercase tracking-wider font-bold">Clinical Engine</p>
             </div>
+            <button onClick={toggleSidebar} className="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Collapse sidebar">
+              <Icon name="menu_open" size="text-[20px]" />
+            </button>
           </div>
 
           {/* Actions */}
@@ -361,19 +380,82 @@ export default function App() {
           <nav className="flex flex-col gap-1 flex-1 overflow-y-auto custom-scrollbar -mx-2 px-2">
             <h2 className="text-on-surface-variant font-label text-[10px] uppercase font-bold tracking-widest mb-2 mt-4 px-2">Recent Consultations</h2>
             {sessions.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase())).map(session => (
-              <button
-                key={session.thread_id}
-                onClick={() => loadHistory(session.thread_id)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded hover:bg-surface-container-high font-headline font-medium text-sm transition-colors text-left relative ${
-                  threadId.current === session.thread_id ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant'
-                }`}
-              >
-                {threadId.current === session.thread_id && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full" />
+              <div key={session.thread_id} className="relative group/session">
+                {/* Rename inline input */}
+                {renameId === session.thread_id ? (
+                  <div className="flex items-center gap-1 px-3 py-1.5">
+                    <input
+                      autoFocus
+                      className="flex-1 bg-surface-container-high text-on-surface text-sm rounded px-2 py-1.5 border border-primary focus:ring-1 focus:ring-primary outline-none"
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter') {
+                          await fetch('http://localhost:8000/api/v1/chat/rename', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', 'x-wallet-address': address || 'anonymous' },
+                            body: JSON.stringify({ thread_id: session.thread_id, new_title: renameValue }),
+                          });
+                          setRenameId(null);
+                          loadSessions();
+                          showToast('Session renamed');
+                        }
+                        if (e.key === 'Escape') setRenameId(null);
+                      }}
+                    />
+                    <button onClick={() => setRenameId(null)} className="p-1 text-on-surface-variant hover:text-on-surface">
+                      <Icon name="close" size="text-[16px]" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => loadHistory(session.thread_id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded hover:bg-surface-container-high font-headline font-medium text-sm transition-colors text-left relative ${
+                      threadId.current === session.thread_id ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant'
+                    }`}
+                  >
+                    {threadId.current === session.thread_id && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full" />
+                    )}
+                    <Icon name="chat" fill={threadId.current === session.thread_id} size="text-[20px]" className="flex-shrink-0" />
+                    <span className="truncate flex-1">{session.title}</span>
+                    {/* 3-dot menu trigger */}
+                    <span
+                      onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === session.thread_id ? null : session.thread_id); }}
+                      className="opacity-0 group-hover/session:opacity-100 p-0.5 rounded hover:bg-surface-container-highest transition-opacity flex-shrink-0 cursor-pointer"
+                    >
+                      <Icon name="more_vert" size="text-[18px]" />
+                    </span>
+                  </button>
                 )}
-                <Icon name="chat" fill={threadId.current === session.thread_id} size="text-[20px]" className="flex-shrink-0" />
-                <span className="truncate flex-1">{session.title}</span>
-              </button>
+                {/* Dropdown menu */}
+                {menuOpenId === session.thread_id && (
+                  <div ref={menuRef} className="absolute right-2 top-full mt-1 z-50 bg-surface-container-high border border-outline-variant/30 rounded-lg shadow-xl shadow-black/40 py-1 w-40">
+                    <button
+                      onClick={() => { setRenameId(session.thread_id); setRenameValue(session.title); setMenuOpenId(null); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-on-surface hover:bg-surface-container-highest transition-colors"
+                    >
+                      <Icon name="edit" size="text-[16px]" /> Rename
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await fetch(`http://localhost:8000/api/v1/chat/delete/${session.thread_id}`, {
+                          method: 'DELETE',
+                          headers: { 'x-wallet-address': address || 'anonymous' },
+                        });
+                        setMenuOpenId(null);
+                        // If we deleted the active session, start fresh
+                        if (threadId.current === session.thread_id) handleNewConsultation();
+                        loadSessions();
+                        showToast('Session deleted');
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-error hover:bg-surface-container-highest transition-colors"
+                    >
+                      <Icon name="delete" size="text-[16px]" /> Delete
+                    </button>
+                  </div>
+                )}
+              </div>
             ))}
             {sessions.length === 0 && (
               <div className="px-3 py-4 text-center text-on-surface-variant text-xs font-medium">
@@ -412,7 +494,12 @@ export default function App() {
         {/* Top Bar */}
         <header className="h-16 flex items-center justify-between px-8 bg-surface/90 glass-effect border-b border-surface-variant/30 sticky top-0 z-10">
           <div className="flex items-center gap-3">
-            <h2 className="text-on-surface font-headline font-bold text-lg">Case Review</h2>
+            {!sidebarOpen && (
+              <button onClick={toggleSidebar} className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors mr-1" title="Open sidebar">
+                <Icon name="menu" size="text-[20px]" />
+              </button>
+            )}
+            <h2 className="text-on-surface font-headline font-bold text-lg">MB Assistant</h2>
             <span className="px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label text-[10px] uppercase font-bold tracking-widest">Active</span>
           </div>
           <div className="flex items-center gap-2">
@@ -426,7 +513,7 @@ export default function App() {
         </header>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar scroll-smooth flex flex-col gap-8 pb-32">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-8 custom-scrollbar flex flex-col gap-6 pb-32">
           {messages.map((msg, i) => (
             msg.role === 'user' ? (
               /* ── User Message ── */
@@ -434,18 +521,18 @@ export default function App() {
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-on-surface font-headline text-sm font-medium">Student</span>
                 </div>
-                <div className="relative bg-surface-container-highest text-on-surface p-5 rounded-[0.5rem] rounded-tr-[0.25rem] max-w-[85%] shadow-[0_8px_24px_rgba(0,0,0,0.2)]">
+                <div className="relative bg-[#21262d] text-[#e6edf3] p-5 rounded-[0.75rem] rounded-tr-[0.25rem] max-w-[85%] border border-[#30363d] shadow-[0_2px_8px_rgba(0,0,0,0.2)]">
                   {editingIndex === i ? (
                     <div className="flex flex-col gap-2 min-w-[300px]">
                       <textarea
-                        className="w-full bg-surface text-on-surface p-2 rounded text-[15px] custom-scrollbar resize-none border border-outline-variant focus:ring-1 focus:ring-primary"
+                        className="w-full bg-[#161b22] text-[#e6edf3] p-2 rounded text-[15px] custom-scrollbar resize-none border border-[#30363d] focus:ring-1 focus:ring-primary outline-none"
                         value={editCache}
                         onChange={(e) => setEditCache(e.target.value)}
                         rows={3}
                         autoFocus
                       />
                       <div className="flex justify-end gap-2">
-                        <button onClick={() => setEditingIndex(null)} className="px-3 py-1 text-xs text-on-surface-variant hover:text-on-surface focus:outline-none">Cancel</button>
+                        <button onClick={() => setEditingIndex(null)} className="px-3 py-1 text-xs text-[#8b949e] hover:text-[#e6edf3] focus:outline-none">Cancel</button>
                         <button onClick={() => handleEditSubmit(i)} className="px-3 py-1 bg-primary text-on-primary rounded text-xs font-bold shadow focus:outline-none">Update & Send</button>
                       </div>
                     </div>
@@ -457,7 +544,7 @@ export default function App() {
                     <div className="absolute -left-12 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                       <button
                         onClick={() => { setEditingIndex(i); setEditCache(msg.content); }}
-                        className="p-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors shadow-sm"
+                        className="p-1.5 rounded-full bg-[#21262d] border border-[#30363d] hover:bg-[#30363d] text-[#8b949e] hover:text-[#e6edf3] transition-colors shadow-sm"
                         title="Edit Message"
                       >
                         <Icon name="edit" size="text-[16px]" />
@@ -470,13 +557,13 @@ export default function App() {
               /* ── AI Message ── */
               <div key={i} className="flex flex-col items-start gap-1 w-full max-w-4xl mx-auto group">
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="w-5 h-5 rounded bg-primary flex items-center justify-center text-on-primary">
-                    <Icon name="smart_toy" size="text-[14px]" />
+                  <div className="w-5 h-5 rounded surgical-gradient flex items-center justify-center text-on-primary">
+                    <Icon name="stethoscope" size="text-[14px]" />
                   </div>
-                  <span className="text-primary font-headline text-sm font-bold tracking-wide">MB_ASSISTANT</span>
+                  <span className="text-primary font-headline text-sm font-bold tracking-wide">MB Assistant</span>
                 </div>
-                <div className="relative bg-secondary-container text-on-surface p-6 rounded-[0.5rem] rounded-tl-[0.25rem] max-w-[90%] shadow-[0_12px_32px_rgba(0,0,0,0.25)]">
-                  <div className="font-body text-[15px] leading-[1.6] prose prose-invert max-w-none prose-p:my-2 prose-headings:my-3 prose-headings:font-headline prose-a:text-primary hover:prose-a:text-primary-container prose-strong:text-on-surface prose-ul:my-2 prose-li:my-0.5">
+                <div className="relative bg-[#161b22] text-[#e6edf3] p-6 rounded-[0.75rem] rounded-tl-[0.25rem] max-w-[90%] border border-[#30363d] shadow-[0_2px_8px_rgba(0,0,0,0.2)]">
+                  <div className="font-body text-[15px] leading-[1.7] prose prose-invert max-w-none prose-p:my-2 prose-headings:my-3 prose-headings:font-headline prose-headings:text-[#e6edf3] prose-a:text-primary hover:prose-a:text-primary-container prose-strong:text-[#e6edf3] prose-ul:my-2 prose-li:my-0.5 prose-th:text-[#e6edf3] prose-td:border-[#30363d] prose-th:border-[#30363d] prose-table:border-[#30363d]">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                   </div>
                   {/* Action buttons (Hover) */}
@@ -484,7 +571,7 @@ export default function App() {
                     <div className="absolute -right-12 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
                       <button
                         onClick={() => { navigator.clipboard.writeText(msg.content); showToast('Message copied to clipboard'); }}
-                        className="p-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors shadow-sm"
+                        className="p-1.5 rounded-full bg-[#21262d] border border-[#30363d] hover:bg-[#30363d] text-[#8b949e] hover:text-[#e6edf3] transition-colors shadow-sm"
                         title="Copy text"
                       >
                         <Icon name="content_copy" size="text-[16px]" />
@@ -495,10 +582,25 @@ export default function App() {
               </div>
             )
           ))}
-          {isStreaming && (
-            <div className="flex items-center gap-2 max-w-4xl mx-auto w-full">
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <span className="text-on-surface-variant font-label text-xs">MB_ASSISTANT is thinking...</span>
+          {isStreaming && messages[messages.length - 1]?.content === '' && (
+            <div className="flex flex-col items-start gap-1 w-full max-w-4xl mx-auto">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-5 h-5 rounded surgical-gradient flex items-center justify-center text-on-primary">
+                  <Icon name="stethoscope" size="text-[14px]" />
+                </div>
+                <span className="text-primary font-headline text-sm font-bold tracking-wide">MB Assistant</span>
+              </div>
+              <div className="bg-[#161b22] border border-[#30363d] rounded-[0.75rem] rounded-tl-[0.25rem] p-6 max-w-[90%] w-full">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  <span className="text-[#8b949e] font-label text-xs font-medium">MB Assistant is analyzing...</span>
+                </div>
+                <div className="space-y-3 animate-pulse">
+                  <div className="h-3 bg-[#30363d] rounded-full w-[85%]" />
+                  <div className="h-3 bg-[#30363d] rounded-full w-[70%]" />
+                  <div className="h-3 bg-[#30363d] rounded-full w-[60%]" />
+                </div>
+              </div>
             </div>
           )}
           <div ref={messagesEndRef} />
@@ -529,7 +631,7 @@ export default function App() {
               </button>
             </div>
             <div className="text-center mt-3">
-              <span className="text-on-surface-variant/70 font-label text-[10px] font-medium tracking-wide">MB_ASSISTANT can make mistakes. Always verify critical clinical information.</span>
+              <span className="text-on-surface-variant/70 font-label text-[10px] font-medium tracking-wide">MB Assistant can make mistakes. Always verify critical clinical information.</span>
             </div>
           </div>
         </div>

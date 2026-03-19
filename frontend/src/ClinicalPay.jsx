@@ -31,7 +31,7 @@ export default function ClinicalPay({ onSuccess }) {
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-12">
             <Icon name="clinical_notes" size="text-4xl" className="text-primary" />
-            <h1 className="font-headline font-extrabold text-2xl tracking-tight text-primary">MB_ASSISTANT</h1>
+            <h1 className="font-headline font-extrabold text-2xl tracking-tight text-primary">MB Assistant</h1>
           </div>
           <h2 className="font-headline text-5xl font-extrabold text-on-surface leading-tight max-w-lg">
             Precision AI for the <span className="text-primary">Next Generation</span> of Medicine.
@@ -60,7 +60,7 @@ export default function ClinicalPay({ onSuccess }) {
       <section className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 lg:p-24 bg-surface">
         <div className="lg:hidden mb-12 flex items-center gap-2">
           <Icon name="clinical_notes" size="text-3xl" className="text-primary" />
-          <span className="font-headline font-extrabold text-xl tracking-tight text-primary">MB_ASSISTANT</span>
+          <span className="font-headline font-extrabold text-xl tracking-tight text-primary">MB Assistant</span>
         </div>
 
         <div className="w-full max-w-md">
