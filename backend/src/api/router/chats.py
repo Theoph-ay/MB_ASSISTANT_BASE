@@ -231,7 +231,6 @@ async def share_session(
 
     return {"share_id": share_id, "thread_id": str(chat.thread_id)}
 
-
 # ── GET /shared/{share_id}  –  public access (no wallet needed) ──
 @router.get("/shared/{share_id}")
 async def get_shared_chat(
