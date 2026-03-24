@@ -9,8 +9,7 @@ from src.api.router import chats, user
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("MB_ASSISTANT: Initializing Database...")
-    SQLModel.metadata.create_all(engine)
+    print("MB_ASSISTANT: System Online...")
     yield
     print("MB_ASSISTANT: Shutting Down...")
 
@@ -26,7 +25,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "https://mb-assistant-base.vercel.app"
+        "https://mb-assistant-base.vercel.app",
+        "https://nexus-ai.sites.lauki.ai"
     ],  # For development, allow everything
     allow_credentials=True,
     allow_methods=["*"],
