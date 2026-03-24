@@ -22,6 +22,11 @@ class User(UserBase, table=True):
     email: str = Field(unique=True, index=True, max_length=120)
     hashed_password: str = Field(max_length=255)
     
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+    
     profile_image: str = Field(default="default_med.jpg", max_length=255)
     
     chats: List["Chat"] = Relationship(
